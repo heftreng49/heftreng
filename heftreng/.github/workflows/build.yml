@@ -1,0 +1,98 @@
+name: Heftreng — Build APK
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Flutter Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Create firebase_options.dart
+        run: echo "${{ secrets.FIREBASE_OPTIONS }}" > lib/firebase_options.dart
+
+      - name: Create google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+
+      - name: Download Fonts
+        run: |
+          mkdir -p assets/fonts
+          curl -fsSL "https://github.com/google/fonts/raw/main/ofl/dmseriftext/DMSerifText-Regular.ttf" \
+            -o assets/fonts/DMSerifDisplay-Regular.ttf || true
+          curl -fsSL "https://github.com/google/fonts/raw/main/ofl/dmseriftext/DMSerifText-Italic.ttf" \
+            -o assets/fonts/DMSerifDisplay-Italic.ttf || true
+          curl -fsSL "https://github.com/google/fonts/raw/main/ofl/dmsans/DMSans%5Bopsz%2Cwght%5D.ttf" \
+            -o assets/fonts/DMSans-Regular.ttf || true
+          cp assets/fonts/DMSans-Regular.ttf assets/fonts/DMSans-Medium.ttf
+          cp assets/fonts/DMSans-Regular.ttf assets/fonts/DMSans-SemiBold.ttf
+          cp assets/fonts/DMSans-Regular.ttf assets/fonts/DMSans-Bold.ttf
+          curl -fsSL "https://github.com/JetBrains/JetBrainsMono/raw/master/fonts/ttf/JetBrainsMono-Regular.ttf" \
+            -o assets/fonts/JetBrainsMono-Regular.ttf || true
+          ls -lh assets/fonts/
+
+      - name: Flutter Pub Get
+        run: flutter pub get
+
+      - name: Flutter Analyze
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Debug APK
+        run: flutter build apk --debug --no-tree-shake-icons
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: APK Info
+        run: |
+          echo "Debug:"; ls -lh build/app/outputs/flutter-apk/app-debug.apk
+          echo "Release:"; ls -lh build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: heftreng-debug-v${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: heftreng-release-v${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: GitHub Release (sadece tag'de)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
