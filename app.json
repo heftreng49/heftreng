@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Heftreng",
+    "slug": "heftreng",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "favicon": "./assets/favicon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#060612"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.heftreng.app"
+    },
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "package": "com.heftreng.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#060612"
+      }
+    },
+    "plugins": [
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "01e584c6-8606-4cbf-9e88-6e03bbcf1d94"
+      }
+    },
+    "owner": "heftreng49"
+  }
+}
